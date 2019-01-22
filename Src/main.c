@@ -65,6 +65,8 @@
 
 /* Private variables ---------------------------------------------------------*/
 extern UART_HandleTypeDef hComHandle[COMn];
+uint8_t str[64] = "Starting NRG-BLE from Marabout\n\r";
+
 
 
 /* USER CODE BEGIN PV */
@@ -91,7 +93,6 @@ int main(void)
 {
 	/* USER CODE BEGIN 1 */
 
-	uint8_t str[64];
 	HAL_StatusTypeDef ret;
 	/* USER CODE END 1 */
 
@@ -115,7 +116,7 @@ int main(void)
 	/* Initialize all configured peripherals */
 	MX_GPIO_Init();
 	MX_X_CUBE_BLE1_Init();
-	strcpy(str, "Starting NRG-BLE from Marabout\n\r");
+	//strcpy(str, "Starting NRG-BLE from Marabout\n\r");
 
 
 
@@ -129,11 +130,12 @@ int main(void)
 	{
 		/* USER CODE END WHILE */
 		ret = HAL_UART_Transmit(&hComHandle[COM1], str, strlen(str), 500);
+		strcpy(str,"");
 		if (ret != HAL_OK)
 		{
 			ret  = ret++ ;
 		}
-		HAL_Delay(500);
+		HAL_Delay(100);
 		MX_X_CUBE_BLE1_Process();
 		/* USER CODE BEGIN 3 */
 	}
