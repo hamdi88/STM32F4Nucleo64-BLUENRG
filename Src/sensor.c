@@ -39,7 +39,7 @@ __IO uint8_t set_connectable = 1;
 __IO uint16_t connection_handle = 0;
 __IO uint8_t  notification_enabled = FALSE;
 __IO uint32_t connected = FALSE;
-
+volatile uint8_t Pattern_Received = 0 ;
 extern uint16_t EnvironmentalCharHandle;
 extern uint16_t AccGyroMagCharHandle;
 extern uint16_t PatternChar1Handle;
@@ -163,6 +163,8 @@ void user_notify(void * pData)
 //			strcat(str, " something written \n\r");
 			sprintf(str, "%spatter received: %s\n\r", str, pattern);
 			aci_gap_terminate(pw->conn_handle, 0);
+			Pattern_Received = 1 ;
+
 
 		}
 		break ;

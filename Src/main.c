@@ -65,6 +65,12 @@
 
 /* Private variables ---------------------------------------------------------*/
 extern UART_HandleTypeDef hComHandle[COMn];
+extern volatile uint8_t jig_rfid [10];
+extern uint8_t volatile UPADATE_JIG_RFID  ;
+extern volatile uint8_t Pattern_Received  ;
+
+
+
 uint8_t str[64] = "Starting NRG-BLE from Marabout\n\r";
 
 
@@ -76,6 +82,7 @@ uint8_t str[64] = "Starting NRG-BLE from Marabout\n\r";
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static int wait_for_pattern_rfid(uint8_t * rfid);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -94,6 +101,7 @@ int main(void)
 	/* USER CODE BEGIN 1 */
 
 	HAL_StatusTypeDef ret;
+	uint8_t rfid_code[16] = "";
 	/* USER CODE END 1 */
 
 	/* MCU Configuration--------------------------------------------------------*/
@@ -134,6 +142,22 @@ int main(void)
 		if (ret != HAL_OK)
 		{
 			ret  = ret++ ;
+		}
+
+		if(!wait_for_pattern_rfid(jig_rfid))
+		{
+			Pattern_Received = 0 ;
+			sprintf(str, "%srfid received: %s\r\n", str, jig_rfid);
+			UPADATE_JIG_RFID = 1 ;
+		}
+		if (Pattern_Received)
+		{
+			HAL_GPIO_WritePin(RELAY_PORT, RELAY_Pin, GPIO_PIN_SET);
+		}
+		else
+		{
+			HAL_GPIO_WritePin(RELAY_PORT, RELAY_Pin, GPIO_PIN_RESET);
+
 		}
 		HAL_Delay(100);
 		MX_X_CUBE_BLE1_Process();
@@ -202,6 +226,8 @@ static void MX_GPIO_Init(void)
 
 	/*Configure GPIO pin Output Level */
 	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1|LD2_Pin|GPIO_PIN_8, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(RELAY_PORT, RELAY_Pin, GPIO_PIN_RESET);
+
 
 	/*Configure GPIO pin : B1_Pin */
 	GPIO_InitStruct.Pin = B1_Pin;
@@ -222,6 +248,13 @@ static void MX_GPIO_Init(void)
 	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
 	HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
+	/*Configure GPIO pins : Relay Pin */
+		GPIO_InitStruct.Pin = RELAY_Pin;
+		GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+		GPIO_InitStruct.Pull = GPIO_NOPULL;
+		GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+		HAL_GPIO_Init(RELAY_PORT, &GPIO_InitStruct);
+
 	/* EXTI interrupt init*/
 	HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
 	HAL_NVIC_EnableIRQ(EXTI0_IRQn);
@@ -229,7 +262,23 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+/* return 0 when rfid code received esle return 1 */
+static int wait_for_pattern_rfid(uint8_t * rfid)
+{
+	int ret  ;
+	uint8_t data[16]= {0};
+	ret = HAL_UART_Receive(&hComHandle[COM1], (uint8_t *)data, 1, 100);
+	if(*data == 0x02)
+	{
+		ret = HAL_UART_Receive(&hComHandle[COM1], (uint8_t *)data, 10, 5000);
+		data[10] = 0;
+		strncpy(rfid ,data, 10) ;
+		return 0;
+	}
 
+	return 1 ;
+
+}
 /* USER CODE END 4 */
 
 /**
