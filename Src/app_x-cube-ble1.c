@@ -77,7 +77,7 @@ extern uint8_t str[64*4];
 uint8_t bnrg_expansion_board = IDB04A1; 
 uint8_t user_button_init_state;
 uint8_t bdaddr[BDADDR_SIZE];
-uint8_t volatile UPADATE_JIG_RFID = 0 ;
+uint8_t volatile UPADATE_JIG_RFID = 0 , ADV_LED =0;
 volatile uint8_t jig_rfid [10];
 
 /* USER CODE BEGIN PV */
@@ -306,6 +306,7 @@ static void User_Process(void)
 		set_connectable = FALSE;
 		user_button_init_state = BSP_PB_GetState(BUTTON_KEY);
 		UPADATE_JIG_RFID = 0 ;
+		ADV_LED = 1 ;
 		strncpy(my_adv_data_jig+4, jig_rfid, strlen(jig_rfid));
 
 
@@ -363,6 +364,7 @@ static void User_Process(void)
 		if (connected)
 		{
 			BSP_LED_On(LED2);
+			ADV_LED = 0 ;
 			/* Set a random seed */
 			//			srand(HAL_GetTick());
 			//
@@ -384,9 +386,17 @@ static void User_Process(void)
 			HAL_Delay(1000); /* wait 1 sec before sending new data */
 #endif
 		}
-		else
+		if (ADV_LED && !connected)
 		{
 			BSP_LED_Toggle(LED2);
+		}
+		else if ( !ADV_LED && !connected)
+		{
+			BSP_LED_Off(LED2);
+
+		}
+		{
+
 		}
 #if USE_BUTTON    
 	}

@@ -68,8 +68,11 @@ extern UART_HandleTypeDef hComHandle[COMn];
 extern volatile uint8_t jig_rfid [10];
 extern uint8_t volatile UPADATE_JIG_RFID  ;
 extern volatile uint8_t Pattern_Received  ;
+extern uint8_t pattern[32];
+uint8_t Pattern_Sent = 0;
 
 
+UART_HandleTypeDef huart6 ;
 
 uint8_t str[64] = "Starting NRG-BLE from Marabout\n\r";
 
@@ -82,6 +85,8 @@ uint8_t str[64] = "Starting NRG-BLE from Marabout\n\r";
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void USART6_Init(UART_HandleTypeDef* uartHandle);
+
 static int wait_for_pattern_rfid(uint8_t * rfid);
 /* USER CODE BEGIN PFP */
 
@@ -102,6 +107,7 @@ int main(void)
 
 	HAL_StatusTypeDef ret;
 	uint8_t rfid_code[16] = "";
+	uint8_t pattern_to_send[6]={0};
 	/* USER CODE END 1 */
 
 	/* MCU Configuration--------------------------------------------------------*/
@@ -123,7 +129,16 @@ int main(void)
 
 	/* Initialize all configured peripherals */
 	MX_GPIO_Init();
+	USART6_Init(&huart6);
 	MX_X_CUBE_BLE1_Init();
+	HAL_GPIO_WritePin(RELAY_PORT, RELAY_Pin, GPIO_PIN_SET);
+	HAL_Delay(150);
+	HAL_GPIO_WritePin(RELAY_PORT, RELAY_Pin, GPIO_PIN_RESET);
+	HAL_Delay(500);
+	HAL_GPIO_WritePin(RELAY_PORT, RELAY_Pin, GPIO_PIN_SET);
+	HAL_Delay(150);
+	HAL_GPIO_WritePin(RELAY_PORT, RELAY_Pin, GPIO_PIN_RESET);
+
 	//strcpy(str, "Starting NRG-BLE from Marabout\n\r");
 
 
@@ -138,6 +153,7 @@ int main(void)
 	{
 		/* USER CODE END WHILE */
 		ret = HAL_UART_Transmit(&hComHandle[COM1], str, strlen(str), 500);
+		//HAL_UART_Transmit(&huart6, str, strlen(str), 500 );
 		strcpy(str,"");
 		if (ret != HAL_OK)
 		{
@@ -149,9 +165,21 @@ int main(void)
 			Pattern_Received = 0 ;
 			sprintf(str, "%srfid received: %s\r\n", str, jig_rfid);
 			UPADATE_JIG_RFID = 1 ;
+			Pattern_Sent = 0 ;
 		}
 		if (Pattern_Received)
 		{
+			if (!Pattern_Sent)
+			{
+			pattern_to_send[0] = 0x02;
+			strncpy(pattern_to_send+1, pattern, 4);
+			pattern_to_send[5] = 0x0d;
+			if (! HAL_UART_Transmit(&huart6, pattern_to_send, 6, 200))
+			{
+				Pattern_Sent = 1 ;
+				HAL_Delay(300);
+			}
+			}
 			HAL_GPIO_WritePin(RELAY_PORT, RELAY_Pin, GPIO_PIN_SET);
 		}
 		else
@@ -159,8 +187,9 @@ int main(void)
 			HAL_GPIO_WritePin(RELAY_PORT, RELAY_Pin, GPIO_PIN_RESET);
 
 		}
-		HAL_Delay(100);
 		MX_X_CUBE_BLE1_Process();
+		HAL_Delay(100);
+
 		/* USER CODE BEGIN 3 */
 	}
 	/* USER CODE END 3 */
@@ -249,16 +278,49 @@ static void MX_GPIO_Init(void)
 	HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
 	/*Configure GPIO pins : Relay Pin */
-		GPIO_InitStruct.Pin = RELAY_Pin;
-		GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-		GPIO_InitStruct.Pull = GPIO_NOPULL;
-		GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-		HAL_GPIO_Init(RELAY_PORT, &GPIO_InitStruct);
+	GPIO_InitStruct.Pin = RELAY_Pin;
+	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+	HAL_GPIO_Init(RELAY_PORT, &GPIO_InitStruct);
 
 	/* EXTI interrupt init*/
 	HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
 	HAL_NVIC_EnableIRQ(EXTI0_IRQn);
 
+}
+
+static void USART6_Init(UART_HandleTypeDef* huart)
+{
+	GPIO_InitTypeDef GPIO_InitStruct;
+	/* USER CODE BEGIN USART2_MspInit 0 */
+
+	/* USER CODE END USART2_MspInit 0 */
+	/* Enable Peripheral clock */
+	__HAL_RCC_USART6_CLK_ENABLE();
+
+
+	/**USART2 GPIO Configuration
+    PA11     ------> USART6_TX
+    PA12     ------> USART6_RX
+	 */
+	GPIO_InitStruct.Pin = GPIO_PIN_11|GPIO_PIN_12;
+	GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+	GPIO_InitStruct.Pull = GPIO_PULLUP;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+	GPIO_InitStruct.Alternate = GPIO_AF8_USART6;
+	HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+	huart->Instance = USART6 ;
+	huart->Init.BaudRate = 115200;
+	huart->Init.WordLength = UART_WORDLENGTH_8B;
+	huart->Init.StopBits = UART_STOPBITS_1;
+	huart->Init.Parity = UART_PARITY_NONE;
+	huart->Init.Mode = UART_MODE_TX_RX;
+	huart->Init.HwFlowCtl = UART_HWCONTROL_NONE;
+	huart->Init.OverSampling = UART_OVERSAMPLING_16;
+
+	HAL_UART_Init(huart);
 }
 
 /* USER CODE BEGIN 4 */
@@ -267,13 +329,18 @@ static int wait_for_pattern_rfid(uint8_t * rfid)
 {
 	int ret  ;
 	uint8_t data[16]= {0};
-	ret = HAL_UART_Receive(&hComHandle[COM1], (uint8_t *)data, 1, 100);
+	//	ret = HAL_UART_Receive(&hComHandle[COM1], (uint8_t *)data, 1, 100);
+	ret = HAL_UART_Receive(&huart6, (uint8_t *)data, 1, 1000);
+
 	if(*data == 0x02)
 	{
-		ret = HAL_UART_Receive(&hComHandle[COM1], (uint8_t *)data, 10, 5000);
-		data[10] = 0;
-		strncpy(rfid ,data, 10) ;
-		return 0;
+		//		ret = HAL_UART_Receive(&hComHandle[COM1], (uint8_t *)data, 10, 5000);
+		if ( !HAL_UART_Receive(&huart6, (uint8_t *)data, 10, 2000))
+		{
+			data[10] = 0;
+			strncpy(rfid ,data, 10) ;
+			return 0;
+		}
 	}
 
 	return 1 ;

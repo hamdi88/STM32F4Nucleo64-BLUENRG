@@ -100,6 +100,9 @@ typedef void (* BSP_EXTI_LineCallback)(void);
 static void BUTTON_KEY_EXTI_Callback(void);
 static void USART2_MspInit(UART_HandleTypeDef *huart);
 static void USART2_MspDeInit(UART_HandleTypeDef *huart); 
+
+static void USART6_MspInit(UART_HandleTypeDef* uartHandle);
+
 /**
  * @}
  */ 
@@ -379,6 +382,7 @@ int32_t BSP_COM_Init(COM_TypeDef COM)
 #if (USE_HAL_UART_REGISTER_CALLBACKS == 0)
   /* Init the UART Msp */
   USART2_MspInit(&hComHandle[COM]);
+
 #else
   if(IsUsart2MspCbValid == 0U)
   {
@@ -478,6 +482,7 @@ static void USART2_MspInit(UART_HandleTypeDef* uartHandle)
   /* USER CODE END USART2_MspInit 1 */
 }
 
+//UART6 Initialize
 static void USART2_MspDeInit(UART_HandleTypeDef* uartHandle)
 {
   /* USER CODE BEGIN USART2_MspDeInit 0 */
