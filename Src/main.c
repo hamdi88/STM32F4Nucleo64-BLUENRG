@@ -163,8 +163,11 @@ int main(void)
 		if(!wait_for_pattern_rfid(jig_rfid))
 		{
 			Pattern_Received = 0 ;
+			if (jig_rfid[0] != 0x5F)
+			{
 			sprintf(str, "%srfid received: %s\r\n", str, jig_rfid);
 			UPADATE_JIG_RFID = 1 ;
+			}
 			Pattern_Sent = 0 ;
 		}
 		if (Pattern_Received)
