@@ -66,8 +66,11 @@
 /* Private variables ---------------------------------------------------------*/
 extern UART_HandleTypeDef hComHandle[COMn];
 extern volatile uint8_t jig_rfid [10];
+volatile uint8_t received_data [10];
 extern uint8_t volatile UPADATE_JIG_RFID  ;
 extern volatile uint8_t Pattern_Received  ;
+extern volatile uint8_t JIG_FINISHED  ;
+
 extern uint8_t pattern[32];
 uint8_t Pattern_Sent = 0;
 
@@ -160,28 +163,39 @@ int main(void)
 			ret  = ret++ ;
 		}
 
-		if(!wait_for_pattern_rfid(jig_rfid))
+		if(!wait_for_pattern_rfid(received_data))
 		{
 			Pattern_Received = 0 ;
-			if (jig_rfid[0] != 0x5F)
-			{
-			sprintf(str, "%srfid received: %s\r\n", str, jig_rfid);
-			UPADATE_JIG_RFID = 1 ;
-			}
 			Pattern_Sent = 0 ;
+			UPADATE_JIG_RFID = 1 ;
+
+
+			if (received_data[0] != 0x5F)
+			{
+				JIG_FINISHED = 0 ;
+
+				strncpy(jig_rfid, received_data, strlen(received_data));
+				sprintf(str, "%srfid received: %s\r\n", str, jig_rfid);
+			}
+			else
+			{
+				JIG_FINISHED = 1 ;
+				sprintf(str, "%sJIG FINISHED: %s\r\n", str, jig_rfid);
+
+			}
 		}
 		if (Pattern_Received)
 		{
 			if (!Pattern_Sent)
 			{
-			pattern_to_send[0] = 0x02;
-			strncpy(pattern_to_send+1, pattern, 4);
-			pattern_to_send[5] = 0x0d;
-			if (! HAL_UART_Transmit(&huart6, pattern_to_send, 6, 200))
-			{
-				Pattern_Sent = 1 ;
-				HAL_Delay(300);
-			}
+				pattern_to_send[0] = 0x02;
+				strncpy(pattern_to_send+1, pattern, 4);
+				pattern_to_send[5] = 0x0d;
+				if (! HAL_UART_Transmit(&huart6, pattern_to_send, 6, 200))
+				{
+					Pattern_Sent = 1 ;
+					HAL_Delay(300);
+				}
 			}
 			HAL_GPIO_WritePin(RELAY_PORT, RELAY_Pin, GPIO_PIN_SET);
 		}

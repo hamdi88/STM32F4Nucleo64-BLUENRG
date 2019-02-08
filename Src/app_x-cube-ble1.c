@@ -79,6 +79,7 @@ uint8_t user_button_init_state;
 uint8_t bdaddr[BDADDR_SIZE];
 uint8_t volatile UPADATE_JIG_RFID = 0 , ADV_LED =0;
 volatile uint8_t jig_rfid [10];
+volatile uint8_t JIG_FINISHED = 0 ;
 
 /* USER CODE BEGIN PV */
 
@@ -296,7 +297,7 @@ static void User_Process(void)
 	static uint32_t counter = 0;
 	uint8_t my_adv_data_name [6] =  {5, 0x09, 'B', 'S', 'C', 'H'};
 	uint8_t my_adv_data_jig  [16] = {15, 0x16, 0x22, 0x22, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41};
-	uint8_t my_adv_data_ext  [4] =  {3, 0x02, 0x22, 0x22};
+	uint8_t my_adv_data_ext  [4] =  {2, 0x02, 0x22};
 	uint8_t my_adv_data_all  [] = 	{15, 0x16, 0x22, 0x22, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41, 0x41};
 
 	//strncpy(my_adv_data_jig+4, JIG2, strlen(JIG2));
@@ -308,17 +309,24 @@ static void User_Process(void)
 		UPADATE_JIG_RFID = 0 ;
 		ADV_LED = 1 ;
 		strncpy(my_adv_data_jig+4, jig_rfid, strlen(jig_rfid));
+		if (JIG_FINISHED == 1)
+		{
+			JIG_FINISHED = 0 ;
+			my_adv_data_jig[14] = 0x42;
+			my_adv_data_jig[15] = 0x42;
+
+		}
 
 
-//		if (!aci_gap_update_adv_data(sizeof(my_adv_data_all), my_adv_data_all))
-//		{
-//			PRINTF("UPDATE SUCESS");
-//			strcpy(str, "UPDATE ADV data success!\n\r");
-//		}
-//		else
-//		{
-//			strcpy(str, "UPDATE ADV data failed!\n\r");
-//		}
+		//		if (!aci_gap_update_adv_data(sizeof(my_adv_data_all), my_adv_data_all))
+		//		{
+		//			PRINTF("UPDATE SUCESS");
+		//			strcpy(str, "UPDATE ADV data success!\n\r");
+		//		}
+		//		else
+		//		{
+		//			strcpy(str, "UPDATE ADV data failed!\n\r");
+		//		}
 
 
 		//		if (!aci_gap_update_adv_data(sizeof(my_adv_data_name), my_adv_data_name))
@@ -334,13 +342,13 @@ static void User_Process(void)
 		//
 		//		if (!aci_gap_update_adv_data(sizeof(my_adv_data_ext), my_adv_data_ext))
 		//		{
-		//			strcat(str, "UPDATE ADV_EXT  success! \n\r");
+		//			strcat(str, "UPDATE ADV_EXT  success!\n\r");
 		//		}
 		//		else
 		//		{
 		//			strcat(str, "UPDATE ADV_EXT failed!\n\r");
 		//		}
-		//
+
 		if (!aci_gap_update_adv_data(sizeof(my_adv_data_jig), my_adv_data_jig))
 		{
 			PRINTF("UPDATE SUCESS");

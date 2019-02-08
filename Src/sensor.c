@@ -161,9 +161,17 @@ void user_notify(void * pData)
 
 //			strcat(str, pattern);
 //			strcat(str, " something written \n\r");
-			sprintf(str, "%spatter received: %s\n\r", str, pattern);
 			aci_gap_terminate(pw->conn_handle, 0);
+			if (pattern[0]!= 0xFF)
+			{
+			sprintf(str, "%spattern received: %s\n\r", str, pattern);
 			Pattern_Received = 1 ;
+			}
+			else
+			{
+				sprintf(str, "%sJIG Finished ACK: %s\n\r", str, pattern);
+
+			}
 
 
 		}
